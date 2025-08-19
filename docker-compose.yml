@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: bahati_hospital
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts:/docker-entrypoint-initdb.d
+
+  rust-service:
+    build: ./backend/rust-service
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/bahati_hospital
+    depends_on:
+      - postgres
+
+  go-service:
+    build: ./backend/go-service
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/bahati_hospital?sslmode=disable
+    depends_on:
+      - postgres
+
+  frontend:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_RUST_API_URL: http://localhost:8080
+      NEXT_PUBLIC_GO_API_URL: http://localhost:8081
+    depends_on:
+      - rust-service
+      - go-service
+
+volumes:
+  postgres_data:
